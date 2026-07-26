@@ -1,0 +1,49 @@
+# Frontend (Node.js / Vite)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+vite.config.*.timestamp-*
+
+# Backend (.NET)
+bin/
+obj/
+TestResults/
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Environment variables and local configuration
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# IDEs and editors
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Thumbs.db
+

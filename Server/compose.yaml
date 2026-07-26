@@ -1,0 +1,24 @@
+name: sert-v5
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sert-v5-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sert_auth
+      POSTGRES_USER: sert
+      POSTGRES_PASSWORD: sert_dev_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - sert_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sert -d sert_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  sert_postgres_data:
