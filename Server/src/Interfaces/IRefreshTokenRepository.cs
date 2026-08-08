@@ -4,9 +4,9 @@ namespace Server.Interfaces;
 
 public interface IRefreshTokenRepository
 {
-    Task<RefreshToken?> GetByHashAsync(
+    Task<RefreshTokenModel?> GetByHashAsync(
         string tokenHash,
         CancellationToken cancellationToken = default);
 
-    void Add(RefreshToken refreshToken);
+    void Add(RefreshTokenModel refreshToken);
 }

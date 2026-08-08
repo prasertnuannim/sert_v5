@@ -39,11 +39,31 @@ Add another component with:
 npx shadcn@latest add dialog
 ```
 
+## Tests and generated API types
+
+```bash
+npm run test
+npm run test:coverage
+```
+
+The client DTO definitions in `src/api/schema.d.ts` are generated from the
+server OpenAPI document. Start the development API, then regenerate after an API
+contract change:
+
+```bash
+npm run generate:api
+```
+
+Set `OPENAPI_URL` to use another schema URL. The generator reads OpenAPI JSON
+directly and has no third-party code-generation dependency.
+
 ## Authentication flow
 
 1. Login calls `POST /api/auth/login`.
-2. Access and refresh tokens are persisted locally.
-3. Axios adds the access token to authenticated requests.
-4. App startup verifies the token with `GET /api/auth/me`.
+2. The refresh token is stored only in an HttpOnly cookie; JavaScript never
+   reads it.
+3. The access token is held in memory and Axios adds it to authenticated requests.
+4. App startup obtains a new access token from `POST /api/auth/refresh`.
 5. An expired access token is rotated with `POST /api/auth/refresh`.
-6. Logout revokes the refresh token and clears the local session.
+6. Logout revokes the refresh-token cookie and always clears local state, even
+   when the API is unavailable.

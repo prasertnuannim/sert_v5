@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Server.Interfaces;
 using Server.Models;
+using Server.Options;
 
 namespace Server.Services;
 
@@ -13,7 +14,7 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
 {
     private readonly JwtOptions _options = options.Value;
 
-    public IssuedTokens IssueTokens(User user)
+    public IssuedTokensModel IssueTokens(UserModel user)
     {
         var now = DateTimeOffset.UtcNow;
         var accessTokenExpiresAt = now.AddMinutes(_options.AccessTokenMinutes);
@@ -41,7 +42,7 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
         var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var refreshTokenExpiresAt = now.AddDays(_options.RefreshTokenDays);
 
-        return new IssuedTokens(
+        return new IssuedTokensModel(
             new JwtSecurityTokenHandler().WriteToken(jwt),
             accessTokenExpiresAt,
             refreshToken,

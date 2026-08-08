@@ -12,25 +12,25 @@ public sealed class UserRepository(AppDbContext db) : IUserRepository
         CancellationToken cancellationToken = default) =>
         db.Users.AnyAsync(x => x.Email == email, cancellationToken);
 
-    public Task<User?> GetByEmailAsync(
+    public Task<UserModel?> GetByEmailAsync(
         string email,
         CancellationToken cancellationToken = default) =>
         db.Users.SingleOrDefaultAsync(x => x.Email == email, cancellationToken);
 
-    public Task<User?> GetByIdAsync(
+    public Task<UserModel?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>
         db.Users
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<User>> GetAllAsync(
+    public async Task<IReadOnlyList<UserModel>> GetAllAsync(
         CancellationToken cancellationToken = default) =>
         await db.Users
             .AsNoTracking()
             .OrderBy(x => x.DisplayName)
             .ToListAsync(cancellationToken);
 
-    public void Add(User user) => db.Users.Add(user);
+    public void Add(UserModel user) => db.Users.Add(user);
 
-    public void Remove(User user) => db.Users.Remove(user);
+    public void Remove(UserModel user) => db.Users.Remove(user);
 }

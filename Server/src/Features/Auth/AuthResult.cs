@@ -1,12 +1,5 @@
 namespace Server.Features.Auth;
 
-public enum AuthResultStatus
-{
-    Success,
-    Conflict,
-    Unauthorized
-}
-
 public sealed record AuthResult<T>(
     AuthResultStatus Status,
     T? Value = default,

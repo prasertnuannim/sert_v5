@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.DTOs;
+using Server.Extensions;
 using Server.Interfaces;
 using Server.Models;
 using Server.Security;
@@ -9,25 +10,25 @@ namespace Server.Features.Auth;
 
 public sealed class AuthService(
     IUnitOfWork unitOfWork,
-    IPasswordHasher<User> passwordHasher,
+    IPasswordHasher<UserModel> passwordHasher,
     ITokenService tokenService) : IAuthService
 {
-    public async Task<AuthResult<AuthResponse>> RegisterAsync(
-        RegisterRequest request,
+    public async Task<AuthResult<AuthSession>> RegisterAsync(
+        RegisterRequestDto request,
         CancellationToken cancellationToken = default)
     {
         var email = NormalizeEmail(request.Email);
         if (await unitOfWork.Users.EmailExistsAsync(email, cancellationToken))
         {
-            return AuthResult<AuthResponse>.Conflict("Email is already registered.");
+            return AuthResult<AuthSession>.Conflict("Email is already registered.");
         }
 
-        var user = new User
+        var user = new UserModel
         {
             Email = email,
             DisplayName = request.DisplayName.Trim(),
             PasswordHash = string.Empty,
-            Role = UserRoles.Normalize(request.Role)
+            Role = UserRolesSecurity.Viewer
         };
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password);
 
@@ -39,16 +40,17 @@ public sealed class AuthService(
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException exception)
+            when (exception.IsUniqueViolation("IX_Users_Email"))
         {
-            return AuthResult<AuthResponse>.Conflict("Email is already registered.");
+            return AuthResult<AuthSession>.Conflict("Email is already registered.");
         }
 
-        return AuthResult<AuthResponse>.Success(response);
+        return AuthResult<AuthSession>.Success(response);
     }
 
-    public async Task<AuthResult<AuthResponse>> LoginAsync(
-        LoginRequest request,
+    public async Task<AuthResult<AuthSession>> LoginAsync(
+        LoginRequestDto request,
         CancellationToken cancellationToken = default)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(
@@ -57,7 +59,7 @@ public sealed class AuthService(
 
         if (user is null)
         {
-            return AuthResult<AuthResponse>.Unauthorized("Invalid email or password.");
+            return AuthResult<AuthSession>.Unauthorized("Invalid email or password.");
         }
 
         var passwordResult = passwordHasher.VerifyHashedPassword(
@@ -67,7 +69,7 @@ public sealed class AuthService(
 
         if (passwordResult == PasswordVerificationResult.Failed)
         {
-            return AuthResult<AuthResponse>.Unauthorized("Invalid email or password.");
+            return AuthResult<AuthSession>.Unauthorized("Invalid email or password.");
         }
 
         if (passwordResult == PasswordVerificationResult.SuccessRehashNeeded)
@@ -79,21 +81,21 @@ public sealed class AuthService(
         unitOfWork.RefreshTokens.Add(refreshToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return AuthResult<AuthResponse>.Success(response);
+        return AuthResult<AuthSession>.Success(response);
     }
 
-    public async Task<AuthResult<AuthResponse>> RefreshAsync(
-        RefreshRequest request,
+    public async Task<AuthResult<AuthSession>> RefreshAsync(
+        string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        var tokenHash = tokenService.HashRefreshToken(request.RefreshToken);
+        var tokenHash = tokenService.HashRefreshToken(refreshToken);
         var currentToken = await unitOfWork.RefreshTokens.GetByHashAsync(
             tokenHash,
             cancellationToken);
 
         if (currentToken is null || !currentToken.IsActive)
         {
-            return AuthResult<AuthResponse>.Unauthorized(
+            return AuthResult<AuthSession>.Unauthorized(
                 "Invalid or expired refresh token.");
         }
 
@@ -107,28 +109,28 @@ public sealed class AuthService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            return AuthResult<AuthResponse>.Unauthorized(
+            return AuthResult<AuthSession>.Unauthorized(
                 "Invalid or expired refresh token.");
         }
 
-        return AuthResult<AuthResponse>.Success(response);
+        return AuthResult<AuthSession>.Success(response);
     }
 
     public async Task LogoutAsync(
-        LogoutRequest request,
+        string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        var tokenHash = tokenService.HashRefreshToken(request.RefreshToken);
-        var refreshToken = await unitOfWork.RefreshTokens.GetByHashAsync(
+        var tokenHash = tokenService.HashRefreshToken(refreshToken);
+        var storedToken = await unitOfWork.RefreshTokens.GetByHashAsync(
             tokenHash,
             cancellationToken);
 
-        if (refreshToken is null || refreshToken.RevokedAt is not null)
+        if (storedToken is null || storedToken.RevokedAt is not null)
         {
             return;
         }
 
-        refreshToken.RevokedAt = DateTimeOffset.UtcNow;
+        storedToken.RevokedAt = DateTimeOffset.UtcNow;
 
         try
         {
@@ -140,7 +142,7 @@ public sealed class AuthService(
         }
     }
 
-    public async Task<UserResponse?> GetCurrentUserAsync(
+    public async Task<UserResponseDto?> GetCurrentUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
@@ -148,12 +150,12 @@ public sealed class AuthService(
         return user is null ? null : ToUserResponse(user);
     }
 
-    private AuthResponse IssueAuthResponse(
-        User user,
-        out RefreshToken refreshToken)
+    private AuthSession IssueAuthResponse(
+        UserModel user,
+        out RefreshTokenModel refreshToken)
     {
         var tokens = tokenService.IssueTokens(user);
-        refreshToken = new RefreshToken
+        refreshToken = new RefreshTokenModel
         {
             TokenHash = tokens.RefreshTokenHash,
             ExpiresAt = tokens.RefreshTokenExpiresAt,
@@ -161,16 +163,18 @@ public sealed class AuthService(
             User = user
         };
 
-        return new AuthResponse(
-            "Bearer",
-            tokens.AccessToken,
-            tokens.AccessTokenExpiresAt,
+        return new AuthSession(
+            new AuthResponseDto(
+                "Bearer",
+                tokens.AccessToken,
+                tokens.AccessTokenExpiresAt,
+                tokens.RefreshTokenExpiresAt,
+                ToUserResponse(user)),
             tokens.RefreshToken,
-            tokens.RefreshTokenExpiresAt,
-            ToUserResponse(user));
+            tokens.RefreshTokenExpiresAt);
     }
 
-    private static UserResponse ToUserResponse(User user) =>
+    private static UserResponseDto ToUserResponse(UserModel user) =>
         new(user.Id, user.Email, user.DisplayName, user.CreatedAt, user.Role);
 
     private static string NormalizeEmail(string email) =>

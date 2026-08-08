@@ -1,20 +1,21 @@
 import { api } from '../../../lib/axios'
 import type {
+  CreateUserRequestDto,
+  UpdateUserRequestDto,
+} from '@/api/schema'
+import type {
   AccessRole,
   User,
   UserRole,
 } from '../../user/types/user.types'
 
-export interface CreateAccountPayload {
-  displayName: string
-  email: string
-  password: string
+export interface CreateAccountPayload
+  extends Omit<CreateUserRequestDto, 'role'> {
   role: UserRole
 }
 
-export interface UpdateAccountPayload {
-  displayName: string
-  email: string
+export interface UpdateAccountPayload
+  extends Omit<UpdateUserRequestDto, 'role'> {
   role: UserRole
 }
 

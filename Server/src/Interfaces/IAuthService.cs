@@ -5,23 +5,23 @@ namespace Server.Interfaces;
 
 public interface IAuthService
 {
-    Task<AuthResult<AuthResponse>> RegisterAsync(
-        RegisterRequest request,
+    Task<AuthResult<AuthSession>> RegisterAsync(
+        RegisterRequestDto request,
         CancellationToken cancellationToken = default);
 
-    Task<AuthResult<AuthResponse>> LoginAsync(
-        LoginRequest request,
+    Task<AuthResult<AuthSession>> LoginAsync(
+        LoginRequestDto request,
         CancellationToken cancellationToken = default);
 
-    Task<AuthResult<AuthResponse>> RefreshAsync(
-        RefreshRequest request,
+    Task<AuthResult<AuthSession>> RefreshAsync(
+        string refreshToken,
         CancellationToken cancellationToken = default);
 
     Task LogoutAsync(
-        LogoutRequest request,
+        string refreshToken,
         CancellationToken cancellationToken = default);
 
-    Task<UserResponse?> GetCurrentUserAsync(
+    Task<UserResponseDto?> GetCurrentUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 }

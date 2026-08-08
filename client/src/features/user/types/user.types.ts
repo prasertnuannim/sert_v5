@@ -1,18 +1,17 @@
+import type { RoleResponseDto, UserResponseDto } from '@/api/schema'
+
 export type UserRole = 'viewer' | 'operator' | 'engineer' | 'admin'
 export type UserStatus = 'active' | 'inactive'
 
-export interface AccessRole {
+type GeneratedRole = RoleResponseDto
+type GeneratedUser = UserResponseDto
+
+export interface AccessRole extends Omit<GeneratedRole, 'name' | 'level'> {
   name: UserRole
-  displayName: string
-  description: string
   level: number
 }
 
-export interface User {
-  id: string
-  email: string
-  displayName: string
-  createdAt: string
+export interface User extends Omit<GeneratedUser, 'role'> {
   role: UserRole
   status?: UserStatus
 }

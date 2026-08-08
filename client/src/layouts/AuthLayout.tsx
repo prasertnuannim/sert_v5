@@ -5,7 +5,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
-import iotRobotHero from '../assets/iot-robot-login-hero.png'
+import iotRobotHero from '../assets/iot-robot-login-hero.jpg'
 
 export function AuthLayout() {
   return (

@@ -1,5 +1,5 @@
 import type { AxiosError } from 'axios'
-import { api, tokenStorage } from '../../../lib/axios'
+import { accessTokenStore, api } from '../../../lib/axios'
 import type {
   ApiProblem,
   AuthResponse,
@@ -24,20 +24,18 @@ export const authApi = {
     return data
   },
 
-  refresh: async (refreshToken: string) => {
-    const { data } = await api.post<AuthResponse>('/auth/refresh', {
-      refreshToken,
-    })
+  refresh: async () => {
+    const { data } = await api.post<AuthResponse>('/auth/refresh')
     return data
   },
 
-  logout: async (refreshToken: string) => {
-    await api.post('/auth/logout', { refreshToken })
+  logout: async () => {
+    await api.post('/auth/logout')
   },
 }
 
 export const persistAuth = (response: AuthResponse) => {
-  tokenStorage.setTokens(response.accessToken, response.refreshToken)
+  accessTokenStore.set(response.accessToken)
 }
 
 export const getApiError = (error: unknown) => {

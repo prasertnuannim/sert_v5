@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useAppDispatch } from './app/hooks'
-import { useAppSelector } from './app/hooks'
 import {
   initializeAuth,
   sessionExpired,
@@ -11,15 +10,9 @@ import {
   AUTH_SESSION_REFRESHED_EVENT,
 } from './lib/axios'
 import { AppRoutes } from './routes/AppRoutes'
-import {
-  clearCurrentUser,
-  setCurrentUser,
-} from './features/user/store/userSlice'
-import { resetUsers } from './features/users/store/usersSlice'
 
 function App() {
   const dispatch = useAppDispatch()
-  const currentUser = useAppSelector((state) => state.auth.user)
 
   useEffect(() => {
     void dispatch(initializeAuth())
@@ -29,7 +22,6 @@ function App() {
     const handleSessionRefreshed = (event: Event) => {
       const { detail } = event as CustomEvent<{
         accessToken: string
-        refreshToken: string
       }>
       dispatch(sessionRefreshed(detail))
     }
@@ -55,15 +47,6 @@ function App() {
       )
     }
   }, [dispatch])
-
-  useEffect(() => {
-    if (currentUser) {
-      dispatch(setCurrentUser(currentUser))
-    } else {
-      dispatch(clearCurrentUser())
-      dispatch(resetUsers())
-    }
-  }, [currentUser, dispatch])
 
   return <AppRoutes />
 }

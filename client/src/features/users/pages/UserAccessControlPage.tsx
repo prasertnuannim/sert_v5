@@ -6,30 +6,16 @@ import {
 } from 'react'
 import {
   Eye,
-  KeyRound,
-  Mail,
-  Pencil,
   Search,
   Settings2,
   ShieldCheck,
-  UserCog,
   UserPlus,
   Users,
   Wrench,
-  X,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -38,7 +24,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
+import { currentUserUpdated } from '@/features/auth/store/authSlice'
 import { UserDataTable } from '../components/UserDataTable'
+import { AccountDialog } from '../components/AccountDialog'
+import {
+  AccessOverview,
+  type RoleDefinition,
+} from '../components/AccessOverview'
 import {
   createUser,
   deleteUser,
@@ -51,13 +43,7 @@ import type { User, UserRole } from '../../user/types/user.types'
 
 type RoleFilter = 'all' | UserRole
 
-const fallbackRoleDefinitions: Array<{
-  role: UserRole
-  title: string
-  description: string
-  icon: typeof Eye
-  color: string
-}> = [
+const fallbackRoleDefinitions: RoleDefinition[] = [
   {
     role: 'viewer',
     title: 'Viewer',
@@ -210,6 +196,7 @@ export function UserAccessControlPage() {
             },
           }),
         ).unwrap()
+        dispatch(currentUserUpdated(updatedUser))
         setSuccess(`อัปเดตบัญชี ${updatedUser.email} เรียบร้อยแล้ว`)
       } else {
         const createdUser = await dispatch(
@@ -308,203 +295,19 @@ export function UserAccessControlPage() {
         </Button>
       </div>
 
-      <Dialog
-        open={isAccountDialogOpen}
+      <AccountDialog
+        account={account}
+        editing={Boolean(editingUserId)}
+        error={error ?? usersError}
+        isOpen={isAccountDialogOpen}
+        isSaving={isSaving}
+        roles={roleDefinitions}
+        onAccountChange={setAccount}
         onOpenChange={handleAccountDialogChange}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <div className="mb-2 flex size-11 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
-              {editingUserId ? (
-                <Pencil className="size-5" />
-              ) : (
-                <UserPlus className="size-5" />
-              )}
-            </div>
-            <DialogTitle>
-              {editingUserId ? 'แก้ไขบัญชี' : 'สร้างบัญชีใหม่'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingUserId
-                ? 'แก้ไขชื่อ อีเมล และบทบาทของผู้ใช้'
-                : 'กรอกข้อมูลและกำหนดบทบาทเริ่มต้นสำหรับบัญชีใหม่'}
-            </DialogDescription>
-          </DialogHeader>
+        onSubmit={handleSaveAccount}
+      />
 
-          {(error || usersError) && (
-            <div className="rounded-xl border border-red-400/15 bg-red-400/8 px-4 py-3 text-sm text-red-300">
-              {error ?? usersError}
-            </div>
-          )}
-
-          <form
-            className="grid gap-4 sm:grid-cols-2"
-            onSubmit={handleSaveAccount}
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="account-name">ชื่อที่แสดง</Label>
-              <div className="relative">
-                <UserCog className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" />
-                <Input
-                  className="border-white/10 bg-black/20 pl-9"
-                  id="account-name"
-                  placeholder="เช่น Automation Engineer"
-                  value={account.displayName}
-                  onChange={(event) =>
-                    setAccount((current) => ({
-                      ...current,
-                      displayName: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="account-email">อีเมล</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" />
-                <Input
-                  className="border-white/10 bg-black/20 pl-9"
-                  id="account-email"
-                  type="email"
-                  placeholder="name@company.local"
-                  value={account.email}
-                  onChange={(event) =>
-                    setAccount((current) => ({
-                      ...current,
-                      email: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            {!editingUserId && (
-              <div className="grid gap-2">
-                <Label htmlFor="account-password">รหัสผ่านเริ่มต้น</Label>
-                <div className="relative">
-                  <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" />
-                  <Input
-                    className="border-white/10 bg-black/20 pl-9"
-                    id="account-password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="อย่างน้อย 8 ตัวอักษร"
-                    value={account.password}
-                    onChange={(event) =>
-                      setAccount((current) => ({
-                        ...current,
-                        password: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label>บทบาท{editingUserId ? '' : 'เริ่มต้น'}</Label>
-              <Select
-                value={account.role}
-                onValueChange={(value) =>
-                  setAccount((current) => ({
-                    ...current,
-                    role: value as UserRole,
-                  }))
-                }
-              >
-                <SelectTrigger className="w-full border-white/10 bg-black/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleDefinitions.map(({ role: value, title }) => (
-                    <SelectItem key={value} value={value}>
-                      {title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <DialogFooter className="mt-3 sm:col-span-2">
-              <Button
-                className="border-white/10 text-slate-300"
-                type="button"
-                variant="outline"
-                onClick={() => handleAccountDialogChange(false)}
-              >
-                <X />
-                ยกเลิก
-              </Button>
-              <Button
-                className="bg-cyan-400 text-[#021018] hover:bg-cyan-300"
-                disabled={isSaving}
-                type="submit"
-              >
-                {editingUserId ? <Pencil /> : <UserPlus />}
-                {isSaving
-                  ? 'กำลังบันทึก...'
-                  : editingUserId
-                    ? 'บันทึกการแก้ไข'
-                    : 'สร้างบัญชี'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {roleDefinitions.map(
-          ({ role: roleName, title, description, icon: Icon, color }) => (
-            <Card
-              className="border-cyan-300/10 bg-[#071321]/80 py-0 shadow-xl"
-              key={roleName}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <span className={`grid size-10 place-items-center rounded-xl ${color}`}>
-                    <Icon className="size-4.5" />
-                  </span>
-                  <span className="text-2xl font-semibold text-white">
-                    {users.filter((user) => user.role === roleName).length}
-                  </span>
-                </div>
-                <h2 className="mt-4 text-sm font-semibold text-slate-200">
-                  {title}
-                </h2>
-                <p className="mt-1 text-[10px] leading-4 text-slate-500">
-                  {description}
-                </p>
-              </CardContent>
-            </Card>
-          ),
-        )}
-      </div>
-
-      <Card className="mb-6 border-cyan-300/10 bg-[#071321]/80 shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg text-white">
-            <ShieldCheck className="size-5 text-cyan-300" />
-            หลักการกำหนดสิทธิ์
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <AccessRule icon={Eye} text="Viewer ดูข้อมูลได้อย่างเดียว" />
-          <AccessRule
-            icon={Settings2}
-            text="Operator ควบคุมอุปกรณ์ได้"
-          />
-          <AccessRule
-            icon={Wrench}
-            text="Engineer จัดการ Automation ได้"
-          />
-          <AccessRule
-            icon={ShieldCheck}
-            text="Administrator จัดการบัญชีและสิทธิ์"
-          />
-        </CardContent>
-      </Card>
+      <AccessOverview roles={roleDefinitions} users={users} />
 
       <Card className="gap-0 overflow-hidden border-cyan-300/10 bg-[#071321]/80 py-0 shadow-xl">
         {(error || usersError || success) && (
@@ -592,19 +395,5 @@ export function UserAccessControlPage() {
         />
       </Card>
     </section>
-  )
-}
-
-interface AccessRuleProps {
-  icon: typeof Eye
-  text: string
-}
-
-function AccessRule({ icon: Icon, text }: AccessRuleProps) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 px-3 py-2.5">
-      <Icon className="size-4 text-cyan-300" />
-      <span className="text-xs text-slate-300">{text}</span>
-    </div>
   )
 }

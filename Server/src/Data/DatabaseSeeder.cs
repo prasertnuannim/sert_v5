@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Server.Models;
+using Server.Options;
 using Server.Security;
-using Server.Services;
 
 namespace Server.Data;
 
 public sealed class DatabaseSeeder(
     AppDbContext db,
-    IPasswordHasher<User> passwordHasher,
+    IPasswordHasher<UserModel> passwordHasher,
     IOptions<DefaultUserOptions> options,
     ILogger<DatabaseSeeder> logger)
 {
@@ -30,21 +30,18 @@ public sealed class DatabaseSeeder(
             cancellationToken);
         if (existingUser is not null)
         {
-            if (existingUser.Role != UserRoles.Admin)
-            {
-                existingUser.Role = UserRoles.Admin;
-                await db.SaveChangesAsync(cancellationToken);
-            }
-
+            logger.LogWarning(
+                "Default user {Email} already exists; the existing account was not modified.",
+                email);
             return;
         }
 
-        var user = new User
+        var user = new UserModel
         {
             Email = email,
             DisplayName = _options.DisplayName.Trim(),
             PasswordHash = string.Empty,
-            Role = UserRoles.Admin
+            Role = UserRolesSecurity.Admin
         };
         user.PasswordHash = passwordHasher.HashPassword(user, _options.Password);
 
@@ -58,6 +55,7 @@ public sealed class DatabaseSeeder(
     {
         if (string.IsNullOrWhiteSpace(_options.Email) ||
             string.IsNullOrWhiteSpace(_options.DisplayName) ||
+            string.IsNullOrEmpty(_options.Password) ||
             _options.Password.Length is < 8 or > 128)
         {
             throw new InvalidOperationException(

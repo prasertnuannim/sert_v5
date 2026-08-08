@@ -1,25 +1,23 @@
 import type { User } from '../../user/types/user.types'
+import type {
+  AuthResponseDto,
+  LoginRequestDto,
+  ProblemDetails,
+  RegisterRequestDto,
+} from '@/api/schema'
 
-export interface LoginCredentials {
-  email: string
-  password: string
-}
+export type LoginCredentials = LoginRequestDto
 
-export interface RegisterPayload extends LoginCredentials {
-  displayName: string
-}
+export type RegisterPayload = RegisterRequestDto
 
-export interface AuthResponse {
+type GeneratedAuthResponse = AuthResponseDto
+
+export interface AuthResponse
+  extends Omit<GeneratedAuthResponse, 'tokenType' | 'user'> {
   tokenType: 'Bearer'
-  accessToken: string
-  accessTokenExpiresAt: string
-  refreshToken: string
-  refreshTokenExpiresAt: string
   user: User
 }
 
-export interface ApiProblem {
-  title?: string
-  detail?: string
+export type ApiProblem = ProblemDetails & {
   errors?: Record<string, string[]>
 }

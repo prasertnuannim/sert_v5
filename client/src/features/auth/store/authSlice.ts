@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { tokenStorage } from '../../../lib/axios'
+import { accessTokenStore } from '../../../lib/axios'
 import {
   authApi,
   getApiError,
@@ -13,19 +13,16 @@ import type { User } from '../../user/types/user.types'
 
 interface StoredSession {
   accessToken: string
-  refreshToken: string
   user: User
 }
 
 interface RefreshedTokens {
   accessToken: string
-  refreshToken: string
 }
 
 interface AuthState {
   user: User | null
   accessToken: string | null
-  refreshToken: string | null
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
   initialized: boolean
   error: string | null
@@ -33,8 +30,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  accessToken: tokenStorage.getAccessToken(),
-  refreshToken: tokenStorage.getRefreshToken(),
+  accessToken: accessTokenStore.get(),
   status: 'idle',
   initialized: false,
   error: null,
@@ -42,7 +38,6 @@ const initialState: AuthState = {
 
 const toSession = (response: AuthResponse): StoredSession => ({
   accessToken: response.accessToken,
-  refreshToken: response.refreshToken,
   user: response.user,
 })
 
@@ -65,19 +60,13 @@ export const initializeAuth = createAsyncThunk<
   void,
   { rejectValue: string }
 >('auth/initialize', async (_, { rejectWithValue }) => {
-  const accessToken = tokenStorage.getAccessToken()
-  const refreshToken = tokenStorage.getRefreshToken()
-
-  if (!accessToken && !refreshToken) {
-    return null
-  }
+  const accessToken = accessTokenStore.get()
 
   try {
     if (accessToken) {
       const user = await authApi.me()
       return {
-        accessToken: tokenStorage.getAccessToken() ?? accessToken,
-        refreshToken: tokenStorage.getRefreshToken() ?? refreshToken ?? '',
+        accessToken: accessTokenStore.get() ?? accessToken,
         user,
       }
     }
@@ -85,30 +74,21 @@ export const initializeAuth = createAsyncThunk<
     // Access token may have expired; use the refresh token below.
   }
 
-  if (!refreshToken) {
-    tokenStorage.clear()
-    return rejectWithValue('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง')
-  }
-
   try {
-    const response = await authApi.refresh(refreshToken)
+    const response = await authApi.refresh()
     persistAuth(response)
     return toSession(response)
   } catch (error) {
-    tokenStorage.clear()
-    return rejectWithValue(getApiError(error))
+    accessTokenStore.clear()
+    return accessToken ? rejectWithValue(getApiError(error)) : null
   }
 })
 
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  const refreshToken = tokenStorage.getRefreshToken()
-
   try {
-    if (refreshToken) {
-      await authApi.logout(refreshToken)
-    }
+    await authApi.logout()
   } finally {
-    tokenStorage.clear()
+    accessTokenStore.clear()
   }
 })
 
@@ -119,14 +99,17 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null
     },
+    currentUserUpdated: (state, action: { payload: User }) => {
+      if (state.user?.id === action.payload.id) {
+        state.user = action.payload
+      }
+    },
     sessionRefreshed: (state, action: { payload: RefreshedTokens }) => {
       state.accessToken = action.payload.accessToken
-      state.refreshToken = action.payload.refreshToken
     },
     sessionExpired: (state) => {
       state.user = null
       state.accessToken = null
-      state.refreshToken = null
       state.status = 'idle'
       state.initialized = true
       state.error = 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง'
@@ -143,7 +126,6 @@ const authSlice = createSlice({
         state.initialized = true
         state.user = action.payload.user
         state.accessToken = action.payload.accessToken
-        state.refreshToken = action.payload.refreshToken
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed'
@@ -155,26 +137,30 @@ const authSlice = createSlice({
         if (action.payload) {
           state.user = action.payload.user
           state.accessToken = action.payload.accessToken
-          state.refreshToken = action.payload.refreshToken
         }
       })
       .addCase(initializeAuth.rejected, (state, action) => {
         state.initialized = true
         state.user = null
         state.accessToken = null
-        state.refreshToken = null
         state.error = action.payload ?? null
       })
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.user = null
-        state.accessToken = null
-        state.refreshToken = null
-        state.status = 'idle'
-        state.error = null
-      })
+      .addCase(logoutUser.fulfilled, clearSession)
+      .addCase(logoutUser.rejected, clearSession)
   },
 })
 
-export const { clearAuthError, sessionExpired, sessionRefreshed } =
-  authSlice.actions
+function clearSession(state: AuthState) {
+  state.user = null
+  state.accessToken = null
+  state.status = 'idle'
+  state.error = null
+}
+
+export const {
+  clearAuthError,
+  currentUserUpdated,
+  sessionExpired,
+  sessionRefreshed,
+} = authSlice.actions
 export default authSlice.reducer

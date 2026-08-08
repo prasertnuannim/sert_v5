@@ -5,6 +5,11 @@ Accept: application/json
 
 ###
 
+GET {{Server_HostAddress}}/health/ready
+Accept: application/json
+
+###
+
 POST {{Server_HostAddress}}/api/auth/register
 Content-Type: application/json
 
@@ -23,3 +28,11 @@ Content-Type: application/json
   "email": "user@example.com",
   "password": "password123"
 }
+
+###
+
+POST {{Server_HostAddress}}/api/auth/refresh
+
+###
+
+POST {{Server_HostAddress}}/api/auth/logout

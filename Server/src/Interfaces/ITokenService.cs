@@ -4,13 +4,6 @@ namespace Server.Interfaces;
 
 public interface ITokenService
 {
-    IssuedTokens IssueTokens(User user);
+    IssuedTokensModel IssueTokens(UserModel user);
     string HashRefreshToken(string token);
 }
-
-public sealed record IssuedTokens(
-    string AccessToken,
-    DateTimeOffset AccessTokenExpiresAt,
-    string RefreshToken,
-    string RefreshTokenHash,
-    DateTimeOffset RefreshTokenExpiresAt);

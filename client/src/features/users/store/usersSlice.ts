@@ -4,6 +4,10 @@ import {
 } from '@reduxjs/toolkit'
 import { getApiError } from '@/features/auth/api/authApi'
 import {
+  logoutUser,
+  sessionExpired,
+} from '@/features/auth/store/authSlice'
+import {
   usersApi,
   type CreateAccountPayload,
   type UpdateAccountPayload,
@@ -183,6 +187,9 @@ const usersSlice = createSlice({
         )
       })
       .addCase(deleteUser.rejected, failMutation)
+      .addCase(logoutUser.fulfilled, () => initialState)
+      .addCase(logoutUser.rejected, () => initialState)
+      .addCase(sessionExpired, () => initialState)
   },
 })
 

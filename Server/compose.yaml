@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: sert
       POSTGRES_PASSWORD: sert_dev_password
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - sert_postgres_data:/var/lib/postgresql/data
     healthcheck:

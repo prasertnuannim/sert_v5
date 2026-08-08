@@ -40,7 +40,7 @@ const systemOverview = [
 ]
 
 export function ProfilePage() {
-  const user = useAppSelector((state) => state.user.profile)
+  const user = useAppSelector((state) => state.auth.user)
 
   if (!user) return null
 
